@@ -25,7 +25,11 @@
    * @returns {string}
    */
   function buildTargetUrl(query, mode) {
-    const baseUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
+    const trimmed = typeof query === 'string' ? query.trim() : '';
+    if (!trimmed) {
+      throw new Error('Query must be a non-empty string');
+    }
+    const baseUrl = `https://www.google.com/search?q=${encodeURIComponent(trimmed)}`;
     if (mode === 'lucky') {
       return `${baseUrl}&btnI=1`;
     }
