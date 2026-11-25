@@ -75,6 +75,8 @@
 
     if (isBackNav) {
       showRecoveryUI(currentQuery);
+    } else {
+      redirectCancelled = false;
     }
   });
 
@@ -138,7 +140,11 @@
     }
   }
 
-  window.addEventListener('pagehide', cancelPendingRedirect);
+  window.addEventListener('pagehide', function (event) {
+    if (event.persisted || pendingRedirectTimer !== null) {
+      cancelPendingRedirect();
+    }
+  });
 
   const query = LuckyRedirect.parseQuery(window.location.search);
   const navType = getNavType();
