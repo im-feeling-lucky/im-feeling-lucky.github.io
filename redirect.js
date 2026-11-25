@@ -71,10 +71,12 @@
    */
   function markRedirected(historyObj, locationObj, url, options = {}) {
     const { pushAnchor = true } = options;
-    if (pushAnchor && typeof historyObj.pushState === 'function') {
+    if (pushAnchor && historyObj && typeof historyObj.pushState === 'function') {
       historyObj.pushState({ anchor: true }, '');
     }
-    historyObj.replaceState({ redirected: true }, '');
+    if (historyObj && typeof historyObj.replaceState === 'function') {
+      historyObj.replaceState({ redirected: true }, '');
+    }
     locationObj.assign(url);
   }
 

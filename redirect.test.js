@@ -197,6 +197,20 @@ describe('markRedirected', () => {
       ['assign', targetUrl],
     ]);
   });
+
+  it('does not throw when historyObj is null or undefined', () => {
+    const assigned = [];
+    const locationMock = {
+      assign(url) {
+        assigned.push(url);
+      },
+    };
+
+    const targetUrl = 'https://www.google.com/search?q=test&btnI=1';
+    assert.doesNotThrow(() => markRedirected(null, locationMock, targetUrl));
+    assert.doesNotThrow(() => markRedirected(undefined, locationMock, targetUrl));
+    assert.deepEqual(assigned, [targetUrl, targetUrl]);
+  });
 });
 
 function createMemoryStorage() {
