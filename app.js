@@ -41,9 +41,25 @@
     window.location.assign(LuckyRedirect.buildTargetUrl(newQuery, mode));
   }
 
+  /**
+   * Read the current navigation type from the Performance API.
+   * @returns {string}
+   */
+  function getNavType() {
+    const navEntry = performance.getEntriesByType('navigation')[0];
+    return (navEntry && navEntry.type) || 'navigate';
+  }
+
   window.addEventListener('pageshow', function (event) {
-    if (event.persisted) {
-      showRecoveryUI(LuckyRedirect.parseQuery(window.location.search));
+    const currentQuery = LuckyRedirect.parseQuery(window.location.search);
+    const isBackNav =
+      event.persisted ||
+      (Boolean(currentQuery) &&
+        (getNavType() === 'back_forward' ||
+          window.history.state?.redirected === true));
+
+    if (isBackNav) {
+      showRecoveryUI(currentQuery);
     }
   });
 
@@ -70,8 +86,7 @@
   }
 
   const query = LuckyRedirect.parseQuery(window.location.search);
-  const navEntry = performance.getEntriesByType('navigation')[0];
-  const navType = (navEntry && navEntry.type) || 'navigate';
+  const navType = getNavType();
 
   if (
     LuckyRedirect.shouldAutoRedirect({
