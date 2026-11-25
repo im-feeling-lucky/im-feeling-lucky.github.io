@@ -8,6 +8,8 @@ const {
   buildTargetUrl,
   shouldAutoRedirect,
   markRedirected,
+  recordLastRedirect,
+  hasRecentRedirect,
 } = require('./redirect.js');
 
 describe('parseQuery', () => {
@@ -143,5 +145,51 @@ describe('markRedirected', () => {
       ['replaceState', { redirected: true }, ''],
       ['assign', targetUrl],
     ]);
+  });
+});
+
+function createMemoryStorage() {
+  const store = new Map();
+  return {
+    getItem(key) {
+      return store.has(key) ? store.get(key) : null;
+    },
+    setItem(key, value) {
+      store.set(key, String(value));
+    },
+  };
+}
+
+describe('recordLastRedirect & hasRecentRedirect', () => {
+  it('records query with timestamp and detects matching recent redirect', () => {
+    const storage = createMemoryStorage();
+    recordLastRedirect(storage, 'rust book', 1000);
+
+    assert.equal(hasRecentRedirect(storage, 'rust book', 60000, 15000), true);
+    assert.equal(hasRecentRedirect(storage, 'other query', 60000, 15000), false);
+    assert.equal(hasRecentRedirect(storage, 'rust book', 60000, 62000), false);
+  });
+
+  it('safely no-ops and returns false when storage is missing, malformed, or throws', () => {
+    assert.doesNotThrow(() => recordLastRedirect(null, 'test', 1000));
+    assert.equal(hasRecentRedirect(null, 'test', 60000, 1000), false);
+
+    const throwingStorage = {
+      getItem() {
+        throw new Error('SecurityError');
+      },
+      setItem() {
+        throw new Error('QuotaExceededError');
+      },
+    };
+    assert.doesNotThrow(() => recordLastRedirect(throwingStorage, 'test', 1000));
+    assert.equal(hasRecentRedirect(throwingStorage, 'test', 60000, 1000), false);
+
+    const malformedStorage = {
+      getItem() {
+        return '{not-json';
+      },
+    };
+    assert.equal(hasRecentRedirect(malformedStorage, 'test', 60000, 1000), false);
   });
 });

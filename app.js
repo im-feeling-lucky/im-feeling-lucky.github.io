@@ -101,10 +101,23 @@
   }
 
   /**
+   * Safely access window.sessionStorage, returning null if restricted.
+   * @returns {Storage | null}
+   */
+  function getSessionStorage() {
+    try {
+      return window.sessionStorage;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /**
    * Schedule an auto-redirect after window load + 100ms so Chrome commits the history entry.
    * @param {string} targetUrl
+   * @param {string} query
    */
-  function scheduleAutoRedirect(targetUrl) {
+  function scheduleAutoRedirect(targetUrl, query) {
     const startTimer = function () {
       if (redirectCancelled) {
         return;
@@ -112,6 +125,7 @@
       pendingRedirectTimer = window.setTimeout(function () {
         pendingRedirectTimer = null;
         if (!redirectCancelled) {
+          LuckyRedirect.recordLastRedirect(getSessionStorage(), query);
           LuckyRedirect.markRedirected(window.history, window.location, targetUrl);
         }
       }, 100);
@@ -128,8 +142,10 @@
 
   const query = LuckyRedirect.parseQuery(window.location.search);
   const navType = getNavType();
+  const recentRedirect = LuckyRedirect.hasRecentRedirect(getSessionStorage(), query);
 
   if (
+    !recentRedirect &&
     LuckyRedirect.shouldAutoRedirect({
       query,
       historyState: window.history.state,
@@ -137,7 +153,7 @@
       isPersisted: false,
     })
   ) {
-    scheduleAutoRedirect(LuckyRedirect.buildTargetUrl(query, 'lucky'));
+    scheduleAutoRedirect(LuckyRedirect.buildTargetUrl(query, 'lucky'), query);
   } else {
     showRecoveryUI(query);
   }

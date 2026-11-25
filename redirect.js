@@ -60,6 +60,8 @@
     return true;
   }
 
+  const LAST_REDIRECT_KEY = 'luckyRedirect:last';
+
   /**
    * Record that a forward redirect occurred in history state and navigate via assign.
    * @param {History} historyObj
@@ -71,10 +73,63 @@
     locationObj.assign(url);
   }
 
+  /**
+   * Persist the most recent redirected query and timestamp in sessionStorage.
+   * Safely no-ops if storage is unavailable or throws.
+   * @param {Storage | null | undefined} storage
+   * @param {string} query
+   * @param {number} [now]
+   */
+  function recordLastRedirect(storage, query, now = Date.now()) {
+    if (!storage || typeof storage.setItem !== 'function' || !query) {
+      return;
+    }
+    try {
+      storage.setItem(
+        LAST_REDIRECT_KEY,
+        JSON.stringify({ query, timestamp: now })
+      );
+    } catch (_) {
+      // Ignore storage quota or security errors
+    }
+  }
+
+  /**
+   * Check whether the same query was recently auto-redirected within maxAgeMs.
+   * Safely returns false if storage is unavailable, malformed, or throws.
+   * @param {Storage | null | undefined} storage
+   * @param {string} query
+   * @param {number} [maxAgeMs=60000]
+   * @param {number} [now]
+   * @returns {boolean}
+   */
+  function hasRecentRedirect(storage, query, maxAgeMs = 60000, now = Date.now()) {
+    if (!storage || typeof storage.getItem !== 'function' || !query) {
+      return false;
+    }
+    try {
+      const raw = storage.getItem(LAST_REDIRECT_KEY);
+      if (!raw) {
+        return false;
+      }
+      const parsed = JSON.parse(raw);
+      return (
+        parsed?.query === query &&
+        typeof parsed.timestamp === 'number' &&
+        now - parsed.timestamp >= 0 &&
+        now - parsed.timestamp <= maxAgeMs
+      );
+    } catch (_) {
+      return false;
+    }
+  }
+
   return {
     parseQuery,
     buildTargetUrl,
     shouldAutoRedirect,
     markRedirected,
+    recordLastRedirect,
+    hasRecentRedirect,
   };
 });
