@@ -67,8 +67,13 @@
    * @param {History} historyObj
    * @param {Location} locationObj
    * @param {string} url
+   * @param {{ pushAnchor?: boolean }} [options]
    */
-  function markRedirected(historyObj, locationObj, url) {
+  function markRedirected(historyObj, locationObj, url, options = {}) {
+    const { pushAnchor = true } = options;
+    if (pushAnchor && typeof historyObj.pushState === 'function') {
+      historyObj.pushState({ anchor: true }, '');
+    }
     historyObj.replaceState({ redirected: true }, '');
     locationObj.assign(url);
   }

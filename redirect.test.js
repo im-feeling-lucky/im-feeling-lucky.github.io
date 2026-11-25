@@ -122,9 +122,12 @@ describe('shouldAutoRedirect', () => {
 });
 
 describe('markRedirected', () => {
-  it('calls replaceState with { redirected: true } before location.assign and never calls replace', () => {
+  it('calls pushState then replaceState before location.assign and never calls replace', () => {
     const calls = [];
     const historyMock = {
+      pushState(state, title) {
+        calls.push(['pushState', state, title]);
+      },
       replaceState(state, title) {
         calls.push(['replaceState', state, title]);
       },
@@ -135,6 +138,54 @@ describe('markRedirected', () => {
       },
       replace(url) {
         calls.push(['replace', url]);
+      },
+    };
+
+    const targetUrl = 'https://www.google.com/search?q=test&btnI=1';
+    markRedirected(historyMock, locationMock, targetUrl);
+
+    assert.deepEqual(calls, [
+      ['pushState', { anchor: true }, ''],
+      ['replaceState', { redirected: true }, ''],
+      ['assign', targetUrl],
+    ]);
+  });
+
+  it('skips pushState when pushAnchor is false', () => {
+    const calls = [];
+    const historyMock = {
+      pushState(state, title) {
+        calls.push(['pushState', state, title]);
+      },
+      replaceState(state, title) {
+        calls.push(['replaceState', state, title]);
+      },
+    };
+    const locationMock = {
+      assign(url) {
+        calls.push(['assign', url]);
+      },
+    };
+
+    const targetUrl = 'https://www.google.com/search?q=test&btnI=1';
+    markRedirected(historyMock, locationMock, targetUrl, { pushAnchor: false });
+
+    assert.deepEqual(calls, [
+      ['replaceState', { redirected: true }, ''],
+      ['assign', targetUrl],
+    ]);
+  });
+
+  it('falls back to replaceState and assign when pushState is unavailable', () => {
+    const calls = [];
+    const historyMock = {
+      replaceState(state, title) {
+        calls.push(['replaceState', state, title]);
+      },
+    };
+    const locationMock = {
+      assign(url) {
+        calls.push(['assign', url]);
       },
     };
 
