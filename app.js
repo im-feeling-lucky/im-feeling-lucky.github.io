@@ -48,6 +48,7 @@
       input.focus();
       return;
     }
+    LuckyRedirect.recordLastRedirect(getSessionStorage(), newQuery);
     window.history.replaceState(
       { redirected: true },
       '',
@@ -115,6 +116,21 @@
   }
 
   /**
+   * Safely remove the stored last-redirect marker from sessionStorage.
+   */
+  function clearLastRedirect() {
+    const storage = getSessionStorage();
+    if (!storage) {
+      return;
+    }
+    try {
+      storage.removeItem('luckyRedirect:last');
+    } catch (_) {
+      // Ignore storage access errors
+    }
+  }
+
+  /**
    * Schedule an auto-redirect after window load + 100ms so Chrome commits the history entry.
    * @param {string} targetUrl
    * @param {string} query
@@ -161,6 +177,9 @@
   ) {
     scheduleAutoRedirect(LuckyRedirect.buildTargetUrl(query, 'lucky'), query);
   } else {
+    if (recentRedirect) {
+      clearLastRedirect();
+    }
     showRecoveryUI(query);
   }
 })();

@@ -192,4 +192,33 @@ describe('recordLastRedirect & hasRecentRedirect', () => {
     };
     assert.equal(hasRecentRedirect(malformedStorage, 'test', 60000, 1000), false);
   });
+
+  it('handles negative clock skew, boundary, and expired windows', () => {
+    const storage = createMemoryStorage();
+    recordLastRedirect(storage, 'edge', 10000);
+
+    // Negative clock skew (now < timestamp)
+    assert.equal(hasRecentRedirect(storage, 'edge', 60000, 9999), false);
+    // Exact boundary (now - timestamp === maxAgeMs)
+    assert.equal(hasRecentRedirect(storage, 'edge', 60000, 70000), true);
+    // Just past expired window
+    assert.equal(hasRecentRedirect(storage, 'edge', 60000, 70001), false);
+  });
+
+  it('suppresses auto-redirect via !hasRecentRedirect even when shouldAutoRedirect is true', () => {
+    const storage = createMemoryStorage();
+    const query = 'mdn array';
+    const baseCtx = {
+      query,
+      historyState: null,
+      navType: 'navigate',
+      isPersisted: false,
+    };
+
+    assert.equal(shouldAutoRedirect(baseCtx) && !hasRecentRedirect(storage, query, 60000, 1000), true);
+
+    recordLastRedirect(storage, query, 1000);
+    assert.equal(shouldAutoRedirect(baseCtx) && !hasRecentRedirect(storage, query, 60000, 5000), false);
+    assert.equal(shouldAutoRedirect(baseCtx) && !hasRecentRedirect(storage, query, 60000, 62000), true);
+  });
 });
