@@ -6,11 +6,26 @@
   const input = document.getElementById('query-input');
   const googleSearchBtn = document.getElementById('google-search-btn');
 
+  let pendingRedirectTimer = null;
+  let redirectCancelled = false;
+
+  /**
+   * Cancel any pending delayed auto-redirect timer.
+   */
+  function cancelPendingRedirect() {
+    redirectCancelled = true;
+    if (pendingRedirectTimer !== null) {
+      window.clearTimeout(pendingRedirectTimer);
+      pendingRedirectTimer = null;
+    }
+  }
+
   /**
    * Reveal the recovery UI, populate the query input, and focus/select it.
    * @param {string} query
    */
   function showRecoveryUI(query) {
+    cancelPendingRedirect();
     if (!recoveryUi || !input) {
       return;
     }
@@ -85,6 +100,32 @@
     });
   }
 
+  /**
+   * Schedule an auto-redirect after window load + 100ms so Chrome commits the history entry.
+   * @param {string} targetUrl
+   */
+  function scheduleAutoRedirect(targetUrl) {
+    const startTimer = function () {
+      if (redirectCancelled) {
+        return;
+      }
+      pendingRedirectTimer = window.setTimeout(function () {
+        pendingRedirectTimer = null;
+        if (!redirectCancelled) {
+          LuckyRedirect.markRedirected(window.history, window.location, targetUrl);
+        }
+      }, 100);
+    };
+
+    if (document.readyState === 'complete') {
+      startTimer();
+    } else {
+      window.addEventListener('load', startTimer, { once: true });
+    }
+  }
+
+  window.addEventListener('pagehide', cancelPendingRedirect);
+
   const query = LuckyRedirect.parseQuery(window.location.search);
   const navType = getNavType();
 
@@ -96,11 +137,7 @@
       isPersisted: false,
     })
   ) {
-    LuckyRedirect.markRedirected(
-      window.history,
-      window.location,
-      LuckyRedirect.buildTargetUrl(query, 'lucky')
-    );
+    scheduleAutoRedirect(LuckyRedirect.buildTargetUrl(query, 'lucky'));
   } else {
     showRecoveryUI(query);
   }
